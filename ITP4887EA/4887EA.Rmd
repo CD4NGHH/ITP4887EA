@@ -1,0 +1,55 @@
+Require library
+```{r}
+# install.packages("jsonlite")
+require(jsonlite)
+require(stringr)
+```
+
+1. Convert the data source format (JSON) to the dataframe. (2M)
+```{r}
+df <- as.data.frame(fromJSON("Housing2122.json"))
+df
+```
+
+2. Tidy up the date format to become readable, i.e., 2nd Sep 2021 => 2/9/2021. (8M)
+```{r}
+df$date <- str_replace_all(df$date, "(st|nd|rd|th)", "")
+df$date <- as.Date(df$date, format = "%d %b %Y")
+df$date <- format(df$date, "%d/%m/%Y")
+df
+```
+
+3. Fill all missing data with 0s except the sq. column. (2M)
+```{r}
+df[, !(names(df) == "sq.")] <- lapply(df[, !(names(df) == "sq.")], function(x) ifelse(is.na(x), 0, x))
+df
+```
+
+4. Aggregate the number of corresponding facilities (Bed, Baths, Reception). (5M)
+```{r}
+df[, c("bed", "beds", "bath", "baths", "reception", "receptions")] <- 
+  sapply(df[, c("bed", "beds", "bath", "baths", "reception", "receptions")], as.numeric)
+
+df$TotalBeds <- df$bed + df$beds
+df$TotalBaths <- df$bath + df$baths
+df$TotalReceptions <- df$reception + df$receptions
+df <- subset(df, select = -c(bed, beds, bath, baths, reception, receptions))
+df
+```
+
+5. Extract Property type from “types” column. (10M)
+```{r}
+df$FlatType <- gsub(" for sale", "", df$types)
+df$FlatType <- gsub("^\\d+ bed ", "", df$FlatType)
+df$FlatType <- tolower(df$FlatType)
+df
+```
+
+6. Output your pre-processed data to CSV format called ”Project_Housing.csv”. (3M)
+```{r}
+write.csv(df, file = "Project_Housing.csv", row.names = FALSE)
+```
+
+
+
+
